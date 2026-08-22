@@ -1,0 +1,5 @@
+DB_PATH = "data/processed/parcelpilot.db"
+XLSX_PATH = "data/raw/ParcelPilot_Assessment_Data.xlsx"
+PDF_DIRECTORY = "data/raw/pdfs"
+PERSIST_DIRECTORY = "data/processed/chroma"
+MEMORY_DB_PATH = "data/processed/memory.db"
