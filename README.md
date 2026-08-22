@@ -113,5 +113,5 @@ LANGSMITH_PROJECT=parcelpilot
 
 ### 5. Run the application
 ```bash
-python main.py
+python -m streamlit app.py
 ```
