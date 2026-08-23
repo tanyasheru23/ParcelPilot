@@ -7,7 +7,10 @@ from typing_extensions import TypedDict
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 
-from langgraph.graph import StateGraph, START
+# from langgraph.graph import StateGraph, START
+from langgraph.graph import StateGraph, START, END
+from langgraph.types import interrupt
+
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -107,6 +110,7 @@ RESPONSES:
 class State(TypedDict):
     messages: Annotated[list, add_messages]
     user_context: UserContext
+    escalation_approved: bool
 
 
 # --------------------------------------------------
@@ -149,6 +153,36 @@ def build_agent():
             "messages": [response]
         }
 
+    def escalation_approval(state: State):
+        """
+        Pause before executing create_escalation.
+        The application must explicitly resume this node.
+        """
+
+        approved = interrupt({
+            "type": "escalation_confirmation",
+            "message": (
+                "This issue requires escalation to the support team. "
+                "Would you like me to create an escalation?"
+            ),
+        })
+
+        return {
+            "escalation_approved": approved
+        }
+    
+    def route_after_chatbot(state: State):
+        last_message = state["messages"][-1]
+
+        if not last_message.tool_calls:
+            return END
+
+        for tool_call in last_message.tool_calls:
+            if tool_call["name"] == "create_escalation":
+                return "escalation_approval"
+
+        return "tools"
+
     # Graph
     graph_builder = StateGraph(State)
 
@@ -162,16 +196,26 @@ def build_agent():
         ToolNode(tools),
     )
 
+    graph_builder.add_node(
+        "escalation_approval",
+        escalation_approval,
+    )
+
     # START → chatbot
     graph_builder.add_edge(
         START,
         "chatbot",
     )
 
-    # chatbot → tools OR END
     graph_builder.add_conditional_edges(
         "chatbot",
-        tools_condition,
+        route_after_chatbot,
+        ["tools", "escalation_approval", END],
+    )
+
+    graph_builder.add_edge(
+        "escalation_approval",
+        "tools",
     )
 
     # tools → chatbot

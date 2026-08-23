@@ -6,6 +6,8 @@ from src.agent import graph
 
 from langchain.messages import AIMessage, ToolMessage
 
+from langgraph.types import Command
+
 # Config
 
 st.set_page_config(
@@ -58,6 +60,9 @@ user_context = st.session_state.user_context
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "pending_escalation" not in st.session_state:
+    st.session_state.pending_escalation = False
+
 # Header
 
 st.title("📦 ParcelPilot")
@@ -73,6 +78,82 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
+if st.session_state.pending_escalation:
+
+    st.warning(
+        "⚠️ ParcelPilot needs your confirmation before creating "
+        "the escalation."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("✅ Confirm Escalation"):
+
+            st.session_state.pending_escalation = False
+
+            config = {
+                "configurable": {
+                    "thread_id": st.session_state.thread_id,
+                }
+            }
+
+            response_text = ""
+
+            with st.chat_message("assistant"):
+
+                with st.status(
+                    "🔧 Creating escalation...",
+                    expanded=True,
+                ):
+
+                    response_placeholder = st.empty()
+
+                    for chunk in graph.stream(
+                        Command(resume=True),
+                        config=config,
+                        stream_mode=["updates", "messages"],
+                        version="v2",
+                    ):
+
+                        if chunk["type"] == "messages":
+
+                            token, metadata = chunk["data"]
+
+                            if (
+                                metadata.get("langgraph_node") == "chatbot"
+                                and token.content
+                            ):
+                                response_text += token.content
+                                response_placeholder.markdown(
+                                    response_text
+                                )
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": response_text,
+            })
+
+            st.rerun()
+
+    with col2:
+        if st.button("❌ Cancel"):
+
+            st.session_state.pending_escalation = False
+
+            # Start a fresh conversation rather than leaving
+            # the interrupted escalation checkpoint suspended.
+            st.session_state.thread_id = str(uuid.uuid4())
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": "Okay, I won't create the escalation.",
+            })
+
+            st.rerun()
+
+    st.stop()
+    
 # Chat Input
 
 if prompt := st.chat_input("Ask ParcelPilot..."):
@@ -176,6 +257,34 @@ if prompt := st.chat_input("Ask ParcelPilot..."):
                                 status.write(
                                     f"✓ `{tool_name}` completed"
                                 )
+
+        # Check whether LangGraph paused for escalation confirmation
+        snapshot = graph.get_state(config)
+
+        if snapshot.interrupts:
+
+            st.session_state.pending_escalation = True
+
+            status.update(
+                label="⏸️ Waiting for confirmation",
+                state="running",
+                expanded=True,
+            )
+
+            st.warning(
+                "This issue requires escalation to the support team. "
+                "Please confirm below."
+            )
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": (
+                    "This issue requires escalation to the support team. "
+                    "Please confirm below."
+                ),
+            })
+
+            st.stop()
 
         status.update(
             label="✅ Response generated",
