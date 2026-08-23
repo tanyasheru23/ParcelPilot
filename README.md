@@ -188,3 +188,17 @@ settings.
 
 The database and document/vector-store data required for the demo are
 included in the repository.
+
+---
+
+## Assessment Documentation
+
+- [Evaluation Prompts](docs/try_these_prompts.md) — Natural test prompts for each
+  demo account, including authorization and escalation scenarios.
+- [Design Decisions & Safety Controls](docs/Design_Decisions.md) — Authentication,
+  account isolation, tool design, document authority, sequential workflows,
+  human-in-the-loop actions, and data privacy.
+- [AI Tools Usage](docs/AI_Tool_Usage.md) — How AI development tools were used
+  during the assessment.
+- [Future Improvements](docs/Improvements.md) — Potential production,
+  scalability, security, observability, and agent improvements.
