@@ -19,12 +19,85 @@ st.set_page_config(
 def login(email: str, password: str):
     return authenticate_user(email, password)
 
+# # Login Page
+
+# if "user_context" not in st.session_state:
+
+#     st.title("📦 ParcelPilot")
+#     st.subheader("Customer Support")
+
+#     email = st.text_input("Email")
+#     password = st.text_input(
+#         "Password",
+#         type="password",
+#     )
+
+#     if st.button("Login"):
+
+#         if not email or not password:
+#             st.warning("Please enter your email and password.")
+#             st.stop()
+
+#         user_context = login(email, password)
+
+#         if user_context is None:
+#             st.error("Invalid credentials.")
+#         else:
+#             # Store authenticated session information
+#             st.session_state.user_context = user_context
+#             st.session_state.thread_id = str(uuid.uuid4())
+#             st.session_state.messages = []
+
+#             st.rerun()
+
+#     st.stop()
+
+# --------------------------------------------------
 # Login Page
+# --------------------------------------------------
 
 if "user_context" not in st.session_state:
 
     st.title("📦 ParcelPilot")
     st.subheader("Customer Support")
+
+    # Quick demo login
+    st.markdown("### 🚀 Quick Demo Login")
+
+    demo_users = {
+        "Northstar Logistics — Sara": "ops@northstar.com",
+        "LumenWorks — Jay": "ops@lumenworks.com",
+        "Beacon Retail — Maya": "ops@beaconretail.com",
+        "Axis Labs — Emmy": "ops@axislabs.com",
+    }
+
+    selected_demo = st.selectbox(
+        "Choose a demo account",
+        list(demo_users.keys())
+    )
+
+    if st.button("Login as Demo User"):
+        email = demo_users[selected_demo]
+
+        # Use your existing authentication mechanism.
+        # If your demo accounts have fixed credentials,
+        # put the password in Streamlit secrets rather than here.
+        password = st.secrets["DEMO_PASSWORDS"][email]
+
+        user_context = authenticate_user(email, password)
+
+        if user_context is None:
+            st.error("Demo account authentication failed.")
+        else:
+            st.session_state.user_context = user_context
+            st.session_state.thread_id = str(uuid.uuid4())
+            st.session_state.messages = []
+            st.rerun()
+
+    st.divider()
+
+    # Normal login
+    st.markdown("### 🔐 Login")
 
     email = st.text_input("Email")
     password = st.text_input(
@@ -38,16 +111,14 @@ if "user_context" not in st.session_state:
             st.warning("Please enter your email and password.")
             st.stop()
 
-        user_context = login(email, password)
+        user_context = authenticate_user(email, password)
 
         if user_context is None:
             st.error("Invalid credentials.")
         else:
-            # Store authenticated session information
             st.session_state.user_context = user_context
             st.session_state.thread_id = str(uuid.uuid4())
             st.session_state.messages = []
-
             st.rerun()
 
     st.stop()
@@ -153,7 +224,7 @@ if st.session_state.pending_escalation:
             st.rerun()
 
     st.stop()
-    
+
 # Chat Input
 
 if prompt := st.chat_input("Ask ParcelPilot..."):
