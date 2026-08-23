@@ -8,6 +8,97 @@ from langchain.messages import AIMessage, ToolMessage
 
 from langgraph.types import Command
 
+
+def render_escalation_confirmation(config):
+    """
+    Render the Confirm/Cancel controls for a pending escalation and
+    handle whichever action the user takes.
+
+    Uses fixed, explicit widget keys so this can be called from more
+    than one place in the script — inline, right when the interrupt
+    is first detected (same run, no extra st.rerun()), or from the
+    top-of-script recovery block on a later rerun (e.g. after a
+    button click or a page reload) — while Streamlit still correctly
+    tracks which button was clicked.
+    """
+
+    st.warning(
+        "⚠️ ParcelPilot needs your confirmation before creating "
+        "the escalation."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        confirm_clicked = st.button(
+            "✅ Confirm Escalation",
+            key="confirm_escalation_btn",
+        )
+
+    with col2:
+        cancel_clicked = st.button(
+            "❌ Cancel",
+            key="cancel_escalation_btn",
+        )
+
+    if confirm_clicked:
+
+        st.session_state.pending_escalation = False
+
+        response_text = ""
+
+        with st.chat_message("assistant"):
+
+            with st.status(
+                "🔧 Creating escalation...",
+                expanded=True,
+            ):
+
+                response_placeholder = st.empty()
+
+                for chunk in graph.stream(
+                    Command(resume=True),
+                    config=config,
+                    stream_mode=["updates", "messages"],
+                    version="v2",
+                ):
+
+                    if chunk["type"] == "messages":
+
+                        token, metadata = chunk["data"]
+
+                        if (
+                            metadata.get("langgraph_node") == "chatbot"
+                            and token.content
+                        ):
+                            response_text += token.content
+                            response_placeholder.markdown(
+                                response_text
+                            )
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": response_text,
+        })
+
+        st.rerun()
+
+    if cancel_clicked:
+
+        st.session_state.pending_escalation = False
+
+        # Start a fresh conversation rather than leaving
+        # the interrupted escalation checkpoint suspended.
+        st.session_state.thread_id = str(uuid.uuid4())
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": "Okay, I won't create the escalation.",
+        })
+
+        st.rerun()
+
+
 # Config
 
 st.set_page_config(
@@ -151,77 +242,13 @@ for message in st.session_state.messages:
 
 if st.session_state.pending_escalation:
 
-    st.warning(
-        "⚠️ ParcelPilot needs your confirmation before creating "
-        "the escalation."
-    )
+    config = {
+        "configurable": {
+            "thread_id": st.session_state.thread_id,
+        }
+    }
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("✅ Confirm Escalation"):
-
-            st.session_state.pending_escalation = False
-
-            config = {
-                "configurable": {
-                    "thread_id": st.session_state.thread_id,
-                }
-            }
-
-            response_text = ""
-
-            with st.chat_message("assistant"):
-
-                with st.status(
-                    "🔧 Creating escalation...",
-                    expanded=True,
-                ):
-
-                    response_placeholder = st.empty()
-
-                    for chunk in graph.stream(
-                        Command(resume=True),
-                        config=config,
-                        stream_mode=["updates", "messages"],
-                        version="v2",
-                    ):
-
-                        if chunk["type"] == "messages":
-
-                            token, metadata = chunk["data"]
-
-                            if (
-                                metadata.get("langgraph_node") == "chatbot"
-                                and token.content
-                            ):
-                                response_text += token.content
-                                response_placeholder.markdown(
-                                    response_text
-                                )
-
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response_text,
-            })
-
-            st.rerun()
-
-    with col2:
-        if st.button("❌ Cancel"):
-
-            st.session_state.pending_escalation = False
-
-            # Start a fresh conversation rather than leaving
-            # the interrupted escalation checkpoint suspended.
-            st.session_state.thread_id = str(uuid.uuid4())
-
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": "Okay, I won't create the escalation.",
-            })
-
-            st.rerun()
+    render_escalation_confirmation(config)
 
     st.stop()
 
@@ -237,6 +264,14 @@ if prompt := st.chat_input("Ask ParcelPilot..."):
     with st.chat_message("user"):
         st.write(prompt)
 
+    config = {
+        "configurable": {
+            "thread_id": st.session_state.thread_id,
+        }
+    }
+
+    interrupted = False
+
     with st.chat_message("assistant"):
 
         status = st.status(
@@ -248,12 +283,6 @@ if prompt := st.chat_input("Ask ParcelPilot..."):
 
         tools_used = []
         response_text = ""
-
-        config = {
-            "configurable": {
-                "thread_id": st.session_state.thread_id,
-            }
-        }
 
         for chunk in graph.stream(
             {
@@ -334,34 +363,44 @@ if prompt := st.chat_input("Ask ParcelPilot..."):
 
         if snapshot.interrupts:
 
+            interrupted = True
+
             st.session_state.pending_escalation = True
 
             status.update(
                 label="⏸️ Waiting for confirmation",
-                state="running",
-                expanded=True,
+                state="complete",
+                expanded=False,
             )
 
-            st.warning(
+        else:
+
+            status.update(
+                label="✅ Response generated",
+                state="complete",
+                expanded=False,
+            )
+
+    if interrupted:
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": (
                 "This issue requires escalation to the support team. "
                 "Please confirm below."
-            )
+            ),
+        })
 
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": (
-                    "This issue requires escalation to the support team. "
-                    "Please confirm below."
-                ),
-            })
+        # Render the confirm/cancel controls right here, in this same
+        # script run, instead of setting a flag and calling
+        # st.rerun(). Since nothing forces the page to redraw from
+        # scratch, the browser stays exactly where it already is —
+        # right after the streamed response — so the buttons just
+        # appear in place instead of the page jumping back to the
+        # top.
+        render_escalation_confirmation(config)
 
-            st.stop()
-
-        status.update(
-            label="✅ Response generated",
-            state="complete",
-            expanded=False,
-        )
+        st.stop()
 
     st.session_state.messages.append({
         "role": "assistant",
