@@ -25,6 +25,9 @@ agent's main capabilities.
 > I've already tried resolving an issue with my shipment and I'm still stuck.
 > Can you get this escalated?
 
+>My pickup for ORD-2002 was missed and the carrier admitted fault. Can you check whether I’m entitled to a service credit and let me know what can be done if there’s an issue with the applicable agreement?
+
+
 > Can you look up an order belonging to Northstar Logistics? I have the
 > account ID if you need it.
 
