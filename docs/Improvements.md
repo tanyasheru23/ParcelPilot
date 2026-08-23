@@ -121,3 +121,17 @@ The same pattern could be extended to other high-impact actions such as:
 
 The agent should explain the proposed action and obtain explicit user
 confirmation before executing such operations.
+
+## 11. Additional Agent Tools
+
+Future versions could introduce specialized tools for more reliable operational reasoning:
+
+* **Duration calculation tool** — calculate elapsed time between the current time and an order, pickup, delivery, or cancellation timestamp instead of relying on LLM date/time arithmetic.
+* **SLA / delay calculation tool** — determine whether an order has exceeded its expected pickup or delivery window.
+* **Escalation priority tool** — assign escalation priority based on factors such as delay duration, shipment status, customer agreement, financial impact, and issue severity.
+* **Business-hours tool** — determine whether support is currently within operating hours and provide the appropriate escalation path.
+* **Order timeline tool** — summarize important order events chronologically to help the agent reason about delays, cancellations, and disputes.
+* **Eligibility calculation tool** — deterministically evaluate service-credit or compensation eligibility using structured order data and applicable agreement rules.
+
+These deterministic tools would reduce reliance on LLM reasoning for calculations and rule-based operational decisions while making the agent's behaviour more consistent and auditable.
+
