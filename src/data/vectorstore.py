@@ -75,13 +75,12 @@ def build_vectorstore(
 
     return vectorstore
 
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
 def get_vectorstore(
     persist_directory: str = CHROMA_DIRECTORY,
 ):
-    """
-    Load the existing Chroma vector store.
-    """
-
     embeddings = OpenAIEmbeddings(
         model="text-embedding-3-small"
     )
