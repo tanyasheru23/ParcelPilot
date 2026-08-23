@@ -41,6 +41,10 @@ and is orchestrated using LangGraph.
                 ▼                ▼                ▼
          lookup_order    search_documents   create_escalation
                 │                │                │
+                │                │                │
+                │                │            INTERUPPT
+                │                │                │
+                │                │                │
                 ▼                ▼                ▼
              SQLite           Chroma            SQLite
           Order / Account    PDF documents    Escalations
