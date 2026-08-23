@@ -104,6 +104,21 @@ def render_escalation_confirmation(config):
 st.set_page_config(
     page_title="ParcelPilot",
     page_icon="📦",
+    layout="wide",
+)
+
+# Widen the chat column beyond Streamlit's narrow default, but keep
+# it centered rather than stretching edge-to-edge.
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 1000px;
+        padding-top: 2rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 # Authentication
@@ -225,14 +240,44 @@ if "messages" not in st.session_state:
 if "pending_escalation" not in st.session_state:
     st.session_state.pending_escalation = False
 
+# Sidebar: account info + chat/session controls
+
+with st.sidebar:
+
+    st.subheader("📦 ParcelPilot")
+
+    st.write(f"**Account:** {user_context.account_name}")
+    st.write(f"**User:** {user_context.name}")
+
+    st.divider()
+
+    if st.button("🆕 New Chat", use_container_width=True):
+
+        # Fresh thread — also clears any pending escalation, since
+        # the old interrupted checkpoint belongs to the old thread.
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.messages = []
+        st.session_state.pending_escalation = False
+
+        st.rerun()
+
+    if st.button("🔁 Switch Account", use_container_width=True):
+
+        # Clear the authenticated session so the login screen shows
+        # again, without needing a full page reload/server restart.
+        for key in (
+            "user_context",
+            "thread_id",
+            "messages",
+            "pending_escalation",
+        ):
+            st.session_state.pop(key, None)
+
+        st.rerun()
+
 # Header
 
 st.title("📦 ParcelPilot")
-
-st.success("Logged in successfully!")
-
-st.write(f"**Account:** {user_context.account_name}")
-st.write(f"**User:** {user_context.name}")
 
 # Chat History & Interface
 

@@ -41,9 +41,9 @@ and is orchestrated using LangGraph.
                 ▼                ▼                ▼
          lookup_order    search_documents   create_escalation
                 │                │                │
-                │                │                │
                 │                │            INTERUPPT
                 │                │                │
+                │                │        Customer confirmation
                 │                │                │
                 ▼                ▼                ▼
              SQLite           Chroma            SQLite
@@ -76,9 +76,11 @@ Account + Authority Filtering
      ▼
 Relevant Document Chunks
 ```
+
 Customer-specific documents are filtered using the authenticated
-account context. Signed customer agreements take precedence over
-general policies when applicable.
+account context. General policies and account-specific agreements
+are retrieved based on the query, with signed customer agreements
+taking precedence over general policies when applicable.
 
 ## Setup
 
@@ -117,5 +119,5 @@ LANGSMITH_PROJECT=parcelpilot
 
 ### 5. Run the application
 ```bash
-python -m streamlit app.py
+streamlit run app.py
 ```
