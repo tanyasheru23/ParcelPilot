@@ -4,7 +4,7 @@ __pycache__/
 .env
 *.pyc
 
-data/processed/
+
 memory.db
 
 .vscode/
